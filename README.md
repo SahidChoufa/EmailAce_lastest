@@ -1,5 +1,18 @@
-# Firebase Studio
+# EmailAce
 
-This is a NextJS starter in Firebase Studio.
+An automated email campaign management system built with Next.js and Supabase.
 
-To get started, take a look at src/app/page.tsx.
+## Getting Started
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Set up environment variables:
+Create a `.env` file with your Supabase credentials.
+
+3. Run the development server:
+```bash
+npm run dev
+```
