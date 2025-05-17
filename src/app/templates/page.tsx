@@ -1,16 +1,22 @@
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, FileText } from "lucide-react";
+import { supabase } from '@/lib/supabase';
 
-// Mock data
-const mockTemplates = [
-  { id: "1", name: "Initial Outreach", subjectTemplate: "Application for [Job Title]", createdAt: new Date() },
-  { id: "2", name: "Follow-up Email", subjectTemplate: "Following up on my application", createdAt: new Date() },
-];
+async function getTemplates() {
+  const { data: templates, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-export default function TemplatesPage() {
+  if (error) throw error;
+  return templates;
+}
+
+export default async function TemplatesPage() {
+  const templates = await getTemplates();
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -29,7 +35,7 @@ export default function TemplatesPage() {
         </Link>
       </div>
 
-       {mockTemplates.length === 0 ? (
+      {templates.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-12">
           <CardHeader className="items-center">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
@@ -45,20 +51,19 @@ export default function TemplatesPage() {
           </CardContent>
         </Card>
       ) : (
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {mockTemplates.map(template => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {templates.map(template => (
             <Card key={template.id}>
               <CardHeader>
                 <CardTitle>{template.name}</CardTitle>
-                <CardDescription>Created: {template.createdAt.toLocaleDateString()}</CardDescription>
+                <CardDescription>Created: {new Date(template.created_at).toLocaleDateString()}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Subject: {template.subjectTemplate}</p>
+                <p className="text-sm text-muted-foreground">Subject: {template.subject_template}</p>
                 <div className="mt-4 flex gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/templates/${template.id}/edit`}>Edit</Link>
                   </Button>
-                  <Button variant="destructive" size="sm">Delete</Button>
                 </div>
               </CardContent>
             </Card>

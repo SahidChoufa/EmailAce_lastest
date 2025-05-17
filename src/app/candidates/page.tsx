@@ -1,16 +1,22 @@
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Users } from "lucide-react";
+import { supabase } from '@/lib/supabase';
 
-// Mock data for now
-const mockCandidates = [
-  { id: "1", name: "Alice Wonderland", information: "Experienced frontend developer...", createdAt: new Date() },
-  { id: "2", name: "Bob The Builder", information: "Skilled in construction and teamwork...", createdAt: new Date() },
-];
+async function getCandidates() {
+  const { data: candidates, error } = await supabase
+    .from('candidates')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-export default function CandidatesPage() {
+  if (error) throw error;
+  return candidates;
+}
+
+export default async function CandidatesPage() {
+  const candidates = await getCandidates();
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -29,8 +35,8 @@ export default function CandidatesPage() {
         </Link>
       </div>
 
-      {mockCandidates.length === 0 ? (
-         <Card className="flex flex-col items-center justify-center py-12">
+      {candidates.length === 0 ? (
+        <Card className="flex flex-col items-center justify-center py-12">
           <CardHeader className="items-center">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
             <CardTitle>No Candidates Yet</CardTitle>
@@ -46,19 +52,21 @@ export default function CandidatesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {mockCandidates.map(candidate => (
+          {candidates.map(candidate => (
             <Card key={candidate.id}>
               <CardHeader>
                 <CardTitle>{candidate.name}</CardTitle>
-                <CardDescription>Joined: {candidate.createdAt.toLocaleDateString()}</CardDescription>
+                <CardDescription>
+                  Language Level: {candidate.language_level}
+                  <br />
+                  Added: {new Date(candidate.created_at).toLocaleDateString()}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground truncate">{candidate.information}</p>
                 <div className="mt-4 flex gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/candidates/${candidate.id}/edit`}>Edit</Link>
                   </Button>
-                  <Button variant="destructive" size="sm">Delete</Button>
                 </div>
               </CardContent>
             </Card>

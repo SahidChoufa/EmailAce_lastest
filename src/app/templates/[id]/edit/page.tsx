@@ -1,13 +1,29 @@
-
-// import TemplateForm from "@/components/forms/TemplateForm"; // Will be created later
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import TemplateForm from "@/components/forms/TemplateForm";
+import { supabase } from '@/lib/supabase';
+import { notFound } from 'next/navigation';
 
 interface EditTemplatePageProps {
   params: { id: string };
 }
 
-export default function EditTemplatePage({ params }: EditTemplatePageProps) {
-  const templateId = params.id;
+async function getTemplate(id: string) {
+  const { data: template, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !template) return null;
+  return template;
+}
+
+export default async function EditTemplatePage({ params }: EditTemplatePageProps) {
+  const template = await getTemplate(params.id);
+  
+  if (!template) {
+    notFound();
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
@@ -16,17 +32,17 @@ export default function EditTemplatePage({ params }: EditTemplatePageProps) {
           Edit Email Template
         </h1>
         <p className="text-muted-foreground">
-          Modify the template with ID: {templateId}.
+          Update the details for {template.name}.
         </p>
       </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>Template Details</CardTitle>
           <CardDescription>Update the subject and body for this email template.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* <TemplateForm templateId={templateId} /> */}
-          <p className="text-center text-muted-foreground py-8">Template edit form for ID: {templateId} will be here.</p>
+          <TemplateForm id={params.id} initialData={template} />
         </CardContent>
       </Card>
     </div>

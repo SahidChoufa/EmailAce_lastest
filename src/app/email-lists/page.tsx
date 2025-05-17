@@ -1,16 +1,22 @@
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, ListChecks } from "lucide-react";
+import { supabase } from '@/lib/supabase';
 
-// Mock data
-const mockEmailLists = [
-  { id: "1", name: "Tech Companies NYC", emails: ["hr@google.com", "jobs@meta.com"], createdAt: new Date() },
-  { id: "2", name: "Startup Founders", emails: ["founder@startup.com"], createdAt: new Date() },
-];
+async function getEmailLists() {
+  const { data: lists, error } = await supabase
+    .from('email_lists')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-export default function EmailListsPage() {
+  if (error) throw error;
+  return lists;
+}
+
+export default async function EmailListsPage() {
+  const emailLists = await getEmailLists();
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -29,7 +35,7 @@ export default function EmailListsPage() {
         </Link>
       </div>
 
-      {mockEmailLists.length === 0 ? (
+      {emailLists.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-12">
           <CardHeader className="items-center">
             <ListChecks className="h-12 w-12 text-muted-foreground mb-4" />
@@ -45,22 +51,21 @@ export default function EmailListsPage() {
           </CardContent>
         </Card>
       ) : (
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {mockEmailLists.map(list => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {emailLists.map(list => (
             <Card key={list.id}>
               <CardHeader>
                 <CardTitle>{list.name}</CardTitle>
-                <CardDescription>{list.emails.length} emails. Created: {list.createdAt.toLocaleDateString()}</CardDescription>
+                <CardDescription>{list.emails.length} emails. Created: {new Date(list.created_at).toLocaleDateString()}</CardDescription>
               </CardHeader>
               <CardContent>
-                 <p className="text-sm text-muted-foreground truncate">
+                <p className="text-sm text-muted-foreground truncate">
                   {list.emails.join(', ')}
-                 </p>
+                </p>
                 <div className="mt-4 flex gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/email-lists/${list.id}/edit`}>Edit</Link>
                   </Button>
-                  <Button variant="destructive" size="sm">Delete</Button>
                 </div>
               </CardContent>
             </Card>
