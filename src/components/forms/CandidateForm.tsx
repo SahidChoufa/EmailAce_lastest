@@ -28,8 +28,6 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [dateOfBirth, setDateOfBirth] = useState(initialData?.date_of_birth || '');
   const [languageLevel, setLanguageLevel] = useState(initialData?.language_level || LANGUAGE_LEVELS[0]);
-  const [passport, setPassport] = useState<File | null>(null);
-  const [cv, setCv] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -45,31 +43,6 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
       if (!name.trim()) throw new Error('Please enter a name');
       if (!dateOfBirth) throw new Error('Please enter date of birth');
       if (!languageLevel) throw new Error('Please select language level');
-      if (!id && (!passport || !cv)) throw new Error('Please upload both passport and CV');
-
-      // Handle file uploads first if needed
-      let passportUrl = initialData?.passport_url;
-      let cvUrl = initialData?.cv_url;
-
-      if (passport) {
-        const passportPath = `passports/${Date.now()}-${passport.name}`;
-        const { error: passportError } = await supabase.storage
-          .from('documents')
-          .upload(passportPath, passport);
-        
-        if (passportError) throw passportError;
-        passportUrl = passportPath;
-      }
-
-      if (cv) {
-        const cvPath = `cvs/${Date.now()}-${cv.name}`;
-        const { error: cvError } = await supabase.storage
-          .from('documents')
-          .upload(cvPath, cv);
-        
-        if (cvError) throw cvError;
-        cvUrl = cvPath;
-      }
 
       // Update or create the candidate
       const { error: supabaseError } = id
@@ -79,8 +52,6 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
               name,
               date_of_birth: dateOfBirth,
               language_level: languageLevel,
-              ...(passportUrl && { passport_url: passportUrl }),
-              ...(cvUrl && { cv_url: cvUrl })
             })
             .eq('id', id)
         : await supabase
@@ -89,8 +60,6 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
               name,
               date_of_birth: dateOfBirth,
               language_level: languageLevel,
-              passport_url: passportUrl,
-              cv_url: cvUrl
             }]);
 
       if (supabaseError) throw supabaseError;
@@ -184,30 +153,6 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="passport">Passport (PDF)</Label>
-        <Input
-          id="passport"
-          type="file"
-          accept=".pdf"
-          onChange={(e) => setPassport(e.target.files?.[0] || null)}
-          disabled={isLoading}
-          {...(!id && { required: true })}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="cv">CV (PDF)</Label>
-        <Input
-          id="cv"
-          type="file"
-          accept=".pdf"
-          onChange={(e) => setCv(e.target.files?.[0] || null)}
-          disabled={isLoading}
-          {...(!id && { required: true })}
-        />
       </div>
 
       {error && (
