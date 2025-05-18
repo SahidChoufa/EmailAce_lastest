@@ -18,8 +18,6 @@ const languageLevels = [
 export default function CandidateForm({ onSubmit }: CandidateFormProps) {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
-  const [passport, setPassport] = useState<File | null>(null);
-  const [cv, setCv] = useState<File | null>(null);
   const [languageLevel, setLanguageLevel] = useState(languageLevels[0]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,25 +30,9 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
     setError(null);
 
     try {
-      if (!name || !dob || !passport || !cv) {
-        throw new Error("Please fill in all fields and upload both files.");
+      if (!name || !dob) {
+        throw new Error("Please fill in all required fields.");
       }
-
-      // Upload passport file
-      const passportPath = `passports/${Date.now()}-${passport.name}`;
-      const { error: passportError } = await supabase.storage
-        .from('documents')
-        .upload(passportPath, passport);
-      
-      if (passportError) throw passportError;
-
-      // Upload CV file
-      const cvPath = `cvs/${Date.now()}-${cv.name}`;
-      const { error: cvError } = await supabase.storage
-        .from('documents')
-        .upload(cvPath, cv);
-      
-      if (cvError) throw cvError;
 
       // Insert candidate record
       const { error: insertError } = await supabase
@@ -58,8 +40,6 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
         .insert([{
           name,
           date_of_birth: dob,
-          passport_url: passportPath,
-          cv_url: cvPath,
           language_level: languageLevel,
         }]);
 
@@ -105,30 +85,6 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           className="input mt-1 w-full"
           value={dob}
           onChange={e => setDob(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </label>
-
-      <label className="font-medium">
-        Passport (PDF)
-        <input
-          type="file"
-          accept="application/pdf"
-          className="input mt-1 w-full"
-          onChange={e => setPassport(e.target.files?.[0] ?? null)}
-          required
-          disabled={isLoading}
-        />
-      </label>
-
-      <label className="font-medium">
-        CV (PDF)
-        <input
-          type="file"
-          accept="application/pdf"
-          className="input mt-1 w-full"
-          onChange={e => setCv(e.target.files?.[0] ?? null)}
           required
           disabled={isLoading}
         />
