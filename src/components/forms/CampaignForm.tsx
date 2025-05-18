@@ -72,6 +72,42 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
     fetchOptions();
   }, [toast]);
 
+  const sendEmails = async (campaignId: string, emailList: EmailList, template: EmailTemplate, candidate: Candidate) => {
+    const candidateAge = new Date().getFullYear() - new Date(candidate.date_of_birth).getFullYear();
+    
+    for (const recipientEmail of emailList.emails) {
+      const emailContent = template.body_template
+        .replace(/{{candidateName}}/g, candidate.name)
+        .replace(/{{candidateAge}}/g, candidateAge.toString())
+        .replace(/{{languageLevel}}/g, candidate.language_level)
+        .replace(/{{position}}/g, jobDescription || 'the position')
+        .replace(/{{company}}/g, 'your company')
+        .replace(/{{recipientName}}/g, 'Hiring Manager');
+
+      const emailSubject = template.subject_template
+        .replace(/{{candidateName}}/g, candidate.name)
+        .replace(/{{candidateAge}}/g, candidateAge.toString())
+        .replace(/{{languageLevel}}/g, candidate.language_level);
+
+      try {
+        await fetch('/api/campaigns/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaignId,
+            recipientEmail,
+            subject: emailSubject,
+            content: emailContent,
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending email:', error);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -83,7 +119,17 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
       if (!emailListId) throw new Error('Please select an email list');
       if (!templateId) throw new Error('Please select a template');
 
-      const { error: supabaseError } = id
+      // Get the selected email list, template, and candidate
+      const emailList = emailLists.find(list => list.id === emailListId);
+      const template = templates.find(t => t.id === templateId);
+      const candidate = candidates.find(c => c.id === candidateId);
+
+      if (!emailList || !template || !candidate) {
+        throw new Error('Invalid selection');
+      }
+
+      // Create campaign
+      const { data: campaignData, error: campaignError } = id
         ? await supabase
             .from('campaigns')
             .update({
@@ -91,9 +137,11 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
               candidate_id: candidateId,
               email_list_id: emailListId,
               template_id: templateId,
-              job_description: jobDescription || null
+              job_description: jobDescription || null,
+              status: 'sending'
             })
             .eq('id', id)
+            .select()
         : await supabase
             .from('campaigns')
             .insert([{
@@ -102,10 +150,36 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
               email_list_id: emailListId,
               template_id: templateId,
               job_description: jobDescription || null,
-              status: 'draft'
-            }]);
+              status: 'sending'
+            }])
+            .select();
 
-      if (supabaseError) throw supabaseError;
+      if (campaignError) throw campaignError;
+      if (!campaignData || campaignData.length === 0) throw new Error('Failed to create campaign');
+
+      const campaign = campaignData[0];
+
+      // Create sent_emails records
+      const sentEmailsData = emailList.emails.map(email => ({
+        campaign_id: campaign.id,
+        recipient_email: email,
+        status: 'pending'
+      }));
+
+      const { error: sentEmailsError } = await supabase
+        .from('sent_emails')
+        .insert(sentEmailsData);
+
+      if (sentEmailsError) throw sentEmailsError;
+
+      // Send the emails
+      await sendEmails(campaign.id, emailList, template, candidate);
+
+      // Update campaign status to sent
+      await supabase
+        .from('campaigns')
+        .update({ status: 'sent' })
+        .eq('id', campaign.id);
 
       toast({
         title: id ? "Campaign updated" : "Campaign created",
@@ -179,7 +253,7 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
           <SelectContent>
             {candidates.map(candidate => (
               <SelectItem key={candidate.id} value={candidate.id}>
-                {candidate.name}
+                {candidate.name} - {candidate.language_level}
               </SelectItem>
             ))}
           </SelectContent>
@@ -224,7 +298,7 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
           id="jobDescription"
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste the job description here to help personalize the email..."
+          placeholder="Enter the job title or description to personalize the email..."
           rows={5}
           disabled={isLoading}
         />
