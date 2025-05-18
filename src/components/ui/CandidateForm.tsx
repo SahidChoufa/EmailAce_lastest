@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type CandidateFormProps = {
   onSubmit?: (data: FormData) => void;
@@ -21,35 +22,66 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
   const [cv, setCv] = useState<File | null>(null);
   const [languageLevel, setLanguageLevel] = useState(languageLevels[0]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!name || !dob || !passport || !cv) {
-      setError("Please fill in all fields and upload both files.");
-      return;
-    }
+    setIsLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("dob", dob);
-    formData.append("passport", passport);
-    formData.append("cv", cv);
-    formData.append("languageLevel", languageLevel);
+    try {
+      if (!name || !dob || !passport || !cv) {
+        throw new Error("Please fill in all fields and upload both files.");
+      }
 
-    if (onSubmit) {
-      onSubmit(formData);
+      // Upload passport file
+      const passportPath = `passports/${Date.now()}-${passport.name}`;
+      const { error: passportError } = await supabase.storage
+        .from('documents')
+        .upload(passportPath, passport);
+      
+      if (passportError) throw passportError;
+
+      // Upload CV file
+      const cvPath = `cvs/${Date.now()}-${cv.name}`;
+      const { error: cvError } = await supabase.storage
+        .from('documents')
+        .upload(cvPath, cv);
+      
+      if (cvError) throw cvError;
+
+      // Insert candidate record
+      const { error: insertError } = await supabase
+        .from('candidates')
+        .insert([{
+          name,
+          date_of_birth: dob,
+          passport_url: passportPath,
+          cv_url: cvPath,
+          language_level: languageLevel,
+        }]);
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Success",
+        description: "Candidate has been created successfully",
+      });
+
+      router.push('/candidates');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to create candidate',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    toast({
-      title: "Success",
-      description: "Candidate has been created successfully",
-    });
-    
-    router.push('/candidates');
   };
 
   return (
@@ -62,6 +94,7 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           value={name}
           onChange={e => setName(e.target.value)}
           required
+          disabled={isLoading}
         />
       </label>
 
@@ -73,6 +106,7 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           value={dob}
           onChange={e => setDob(e.target.value)}
           required
+          disabled={isLoading}
         />
       </label>
 
@@ -84,6 +118,7 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           className="input mt-1 w-full"
           onChange={e => setPassport(e.target.files?.[0] ?? null)}
           required
+          disabled={isLoading}
         />
       </label>
 
@@ -95,6 +130,7 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           className="input mt-1 w-full"
           onChange={e => setCv(e.target.files?.[0] ?? null)}
           required
+          disabled={isLoading}
         />
       </label>
 
@@ -104,6 +140,7 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
           className="input mt-1 w-full"
           value={languageLevel}
           onChange={e => setLanguageLevel(e.target.value)}
+          disabled={isLoading}
         >
           {languageLevels.map(level => (
             <option value={level} key={level}>{level}</option>
@@ -113,8 +150,12 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      <button type="submit" className="btn btn-primary mt-2">
-        Add Candidate
+      <button 
+        type="submit" 
+        className="btn btn-primary mt-2"
+        disabled={isLoading}
+      >
+        {isLoading ? "Creating..." : "Add Candidate"}
       </button>
     </form>
   );
