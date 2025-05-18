@@ -118,12 +118,12 @@ export default function TemplateForm({ id, initialData }: TemplateFormProps) {
           id="subjectTemplate"
           value={subjectTemplate}
           onChange={(e) => setSubjectTemplate(e.target.value)}
-          placeholder="e.g., Application for {{position}} - {{candidateName}}"
+          placeholder="e.g., Application from {{candidateName}} - {{languageLevel}} level"
           required
           disabled={isLoading}
         />
         <p className="text-sm text-muted-foreground">
-          Use {{placeholders}} for dynamic content
+          Available placeholders: {{candidateName}}, {{candidateAge}}, {{languageLevel}}
         </p>
       </div>
 
@@ -135,13 +135,21 @@ export default function TemplateForm({ id, initialData }: TemplateFormProps) {
           onChange={(e) => setBodyTemplate(e.target.value)}
           placeholder="Dear {{recipientName}},
 
-I am writing to express my interest in the {{position}} position at {{company}}..."
+I am {{candidateName}}, a {{languageLevel}} level candidate. I am {{candidateAge}} years old.
+
+I am writing to express my interest in the position..."
           rows={10}
           required
           disabled={isLoading}
         />
         <p className="text-sm text-muted-foreground">
-          Available placeholders: {{candidateName}}, {{position}}, {{company}}, {{recipientName}}
+          Available placeholders:
+          <br />- {{candidateName}} - The candidate's full name
+          <br />- {{candidateAge}} - The candidate's age (calculated from date of birth)
+          <br />- {{languageLevel}} - The candidate's language proficiency level
+          <br />- {{recipientName}} - The recipient's name
+          <br />- {{position}} - The position being applied for
+          <br />- {{company}} - The company name
         </p>
       </div>
 
