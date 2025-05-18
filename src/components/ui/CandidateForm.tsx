@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 type CandidateFormProps = {
   onSubmit?: (data: FormData) => void;
@@ -19,6 +21,8 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
   const [cv, setCv] = useState<File | null>(null);
   const [languageLevel, setLanguageLevel] = useState(languageLevels[0]);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +42,14 @@ export default function CandidateForm({ onSubmit }: CandidateFormProps) {
 
     if (onSubmit) {
       onSubmit(formData);
-    } else {
-      alert("Form submitted! (Implement the backend to handle uploads.)");
     }
+    
+    toast({
+      title: "Success",
+      description: "Candidate has been created successfully",
+    });
+    
+    router.push('/candidates');
   };
 
   return (
