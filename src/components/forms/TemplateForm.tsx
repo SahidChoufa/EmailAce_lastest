@@ -58,6 +58,11 @@ export default function TemplateForm({ id, initialData }: TemplateFormProps) {
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'An error occurred',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +151,7 @@ I am writing to express my interest in the {{position}} position at {{company}}.
 
       <div className="flex gap-4">
         <Button type="submit" className="flex-1" disabled={isLoading}>
-          {id ? 'Update Template' : 'Create Template'}
+          {isLoading ? (id ? "Updating..." : "Creating...") : (id ? 'Update Template' : 'Create Template')}
         </Button>
 
         {id && (

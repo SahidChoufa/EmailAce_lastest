@@ -42,14 +42,18 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
     const fetchOptions = async () => {
       try {
         const [
-          { data: candidatesData },
-          { data: emailListsData },
-          { data: templatesData }
+          { data: candidatesData, error: candidatesError },
+          { data: emailListsData, error: emailListsError },
+          { data: templatesData, error: templatesError }
         ] = await Promise.all([
           supabase.from('candidates').select('*'),
           supabase.from('email_lists').select('*'),
           supabase.from('email_templates').select('*')
         ]);
+
+        if (candidatesError) throw candidatesError;
+        if (emailListsError) throw emailListsError;
+        if (templatesError) throw templatesError;
 
         if (candidatesData) setCandidates(candidatesData);
         if (emailListsData) setEmailLists(emailListsData);
@@ -57,11 +61,16 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
       } catch (err) {
         console.error('Error fetching options:', err);
         setError('Failed to load form options');
+        toast({
+          title: "Error",
+          description: "Failed to load form options",
+          variant: "destructive",
+        });
       }
     };
 
     fetchOptions();
-  }, []);
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +116,11 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'An error occurred',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +236,7 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
 
       <div className="flex gap-4">
         <Button type="submit" className="flex-1" disabled={isLoading}>
-          {id ? 'Update Campaign' : 'Create Campaign'}
+          {isLoading ? (id ? "Updating..." : "Creating...") : (id ? 'Update Campaign' : 'Create Campaign')}
         </Button>
 
         {id && (

@@ -52,21 +52,23 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
       let cvUrl = initialData?.cv_url;
 
       if (passport) {
-        const { data: passportData, error: passportError } = await supabase.storage
+        const passportPath = `passports/${Date.now()}-${passport.name}`;
+        const { error: passportError } = await supabase.storage
           .from('documents')
-          .upload(`passports/${Date.now()}-${passport.name}`, passport);
+          .upload(passportPath, passport);
         
         if (passportError) throw passportError;
-        passportUrl = passportData.path;
+        passportUrl = passportPath;
       }
 
       if (cv) {
-        const { data: cvData, error: cvError } = await supabase.storage
+        const cvPath = `cvs/${Date.now()}-${cv.name}`;
+        const { error: cvError } = await supabase.storage
           .from('documents')
-          .upload(`cvs/${Date.now()}-${cv.name}`, cv);
+          .upload(cvPath, cv);
         
         if (cvError) throw cvError;
-        cvUrl = cvData.path;
+        cvUrl = cvPath;
       }
 
       // Update or create the candidate
@@ -102,6 +104,11 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'An error occurred',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -209,7 +216,7 @@ export default function CandidateForm({ id, initialData }: CandidateFormProps) {
 
       <div className="flex gap-4">
         <Button type="submit" className="flex-1" disabled={isLoading}>
-          {id ? 'Update Candidate' : 'Create Candidate'}
+          {isLoading ? (id ? "Updating..." : "Creating...") : (id ? 'Update Candidate' : 'Create Candidate')}
         </Button>
 
         {id && (
