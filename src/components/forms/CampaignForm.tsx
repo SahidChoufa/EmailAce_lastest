@@ -72,42 +72,6 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
     fetchOptions();
   }, [toast]);
 
-  const sendEmails = async (campaignId: string, emailList: EmailList, template: EmailTemplate, candidate: Candidate) => {
-    const candidateAge = new Date().getFullYear() - new Date(candidate.date_of_birth).getFullYear();
-    
-    for (const recipientEmail of emailList.emails) {
-      const emailContent = template.body_template
-        .replace(/{{candidateName}}/g, candidate.name)
-        .replace(/{{candidateAge}}/g, candidateAge.toString())
-        .replace(/{{languageLevel}}/g, candidate.language_level)
-        .replace(/{{position}}/g, jobDescription || 'the position')
-        .replace(/{{company}}/g, 'your company')
-        .replace(/{{recipientName}}/g, 'Hiring Manager');
-
-      const emailSubject = template.subject_template
-        .replace(/{{candidateName}}/g, candidate.name)
-        .replace(/{{candidateAge}}/g, candidateAge.toString())
-        .replace(/{{languageLevel}}/g, candidate.language_level);
-
-      try {
-        await fetch('/api/campaigns/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            campaignId,
-            recipientEmail,
-            subject: emailSubject,
-            content: emailContent,
-          }),
-        });
-      } catch (error) {
-        console.error('Error sending email:', error);
-      }
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -172,8 +136,37 @@ export default function CampaignForm({ id, initialData }: CampaignFormProps) {
 
       if (sentEmailsError) throw sentEmailsError;
 
-      // Send the emails
-      await sendEmails(campaign.id, emailList, template, candidate);
+      // Send webhook to n8n
+      const webhookData = {
+        campaign_id: campaign.id,
+        candidate: {
+          name: candidate.name,
+          date_of_birth: candidate.date_of_birth,
+          language_level: candidate.language_level,
+        },
+        email_list: {
+          name: emailList.name,
+          emails: emailList.emails,
+        },
+        template: {
+          name: template.name,
+          subject: template.subject_template,
+          body: template.body_template,
+        },
+        job_description: jobDescription,
+      };
+
+      const webhookResponse = await fetch('https://your-n8n-domain/webhook/send-outreach-emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+      });
+
+      if (!webhookResponse.ok) {
+        throw new Error('Failed to trigger email sending webhook');
+      }
 
       // Update campaign status to sent
       await supabase
